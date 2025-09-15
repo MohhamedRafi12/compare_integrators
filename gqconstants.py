@@ -179,18 +179,45 @@ class HighPrecisionGaussInt:
         
         return c1 * sum_val
 
-    def integ(self, f, a: float, b: float) -> Decimal:
-        """
-        Integrate function f from a to b using Gaussian quadrature
-        """
-        
-        ### complete code here ###
-    
-        return 0  # integral of function f
+def trapzoid_rule(f, n, a, b):
+    """
+    Integrate function (f) from point (a,b) with n subdivisions using the trapzoid rule
+    """
+
+    # we define equal intervals 
+    h = (b - a) / n 
+    weights = np.array([h/2] + (n-2)*[h] + [h/2], dtype=np.float64)
+    evals = np.array([f(a + i*h) for i in np.arange(0, n+h, h)])
+
+    return (weights*evals).sum()
+
+
+def simpsons_rule(f, n, a, b):
+    """
+    Integrate function (f) from point (a,b) with n subdivisions using the Simpsons rule 
+
+    n has to be even 
+    """
+    if n % 2 == 0:
+        h = (b - a) / n 
+        weights = np.ones(n+1)
+        weights[0] = h/3
+        weights[n-1] = h/3
+
+        weights[1:-1:2] = 4*h/3
+        weights[2:-1:2] = 2*h/3
+
+        evals = np.array([f(a + i*h) for i in np.arange(0, n+h, h)])
+
+        return (weights*evals).sum()
+
+    else 
+        return np.nan 
 
     
 # Example usage and testing
 if __name__ == "__main__":
+    import math
     import sys
     # Create high precision integrator
     if len(sys.argv)==1: order=10
@@ -199,4 +226,29 @@ if __name__ == "__main__":
     print(f"Creating {order}-point Gaussian quadrature with high precision...")
     gauss_hp = HighPrecisionGaussInt(order, precision=40)
     gauss_hp.PrintWA()
+
+    # create log-log 
+    ns = np.logspace(2, 7, 100)
+
+    funcs = [np.sin, np.sin, np.exp]
+    fig, axs = plt.subplots(len(funcs), 1, figsize=(5, 5*len(funcs)))
+    for i,func in enumerate(funcs):        
+        axs[i].set_title(f'Integrator Methods for {func.__name__}')
+        for integrator in [simpsons_rule, trapzoid_rule]:
+            # create a val for each n
+            vals = np.array([integrator(f, n, 0, 2pi) for n in ns])
+            differences = math.abs(vals[1:] - vals[:-1])
+            axs[i].plot(ns, vals, label=f'{integrator.__name__}')
+            axs[i].set_ylabel('$\epsilon$')
+            axs[i].set_xlabel('N, divisions')
+            
+            axs[i].set_yscale('log')
+            axs[i].set_xscale('log')
+            
+
+    
+    plt.savefig('./Error.png')
+
+
+
     
