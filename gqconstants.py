@@ -297,8 +297,8 @@ if __name__ == "__main__":
 
 
     plt.tight_layout()
-    #plt.savefig('./Error.png')
-    plt.savefig('./BadError.png')
+    #plt.savefig('./Errors.png')
+    plt.savefig('./BadErrors.png')
 
 
 
