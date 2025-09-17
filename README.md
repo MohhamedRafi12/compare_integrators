@@ -29,7 +29,7 @@ Question Answers
   1) No method really works well near singularities (not across the singularity)
   2) See BadErrors.png
   3) Methods that oscillate rapidly, or have singularities across the intervals break the code. I believe if you function maybe be smooth but if 
-  it oscillates so quickly then it would be harder to fit a poly. to the such functions.
+  it oscillates so quickly then it would be harder to fit a poly. to the such functions. I did cos(100x) and that breaks the convergence.
   4) You could scale your x-values that factor into your oscillators. 
 
 
