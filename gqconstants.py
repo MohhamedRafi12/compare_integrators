@@ -1,6 +1,10 @@
 from decimal import Decimal, getcontext
 from typing import List
+
+import matplotlib.pyplot as plt
+from matplotlib.lines import Line2D
 import math
+import numpy as np 
 
 class HighPrecisionGaussInt:
     """
@@ -184,14 +188,14 @@ def trapzoid_rule(f, n, a, b):
     Integrate function (f) from point (a,b) with n subdivisions using the trapzoid rule
     """
 
+    x = np.linspace(a, b, n+1)
+
     # we define equal intervals 
     h = (b - a) / n 
-    weights = np.array([h/2] + (n-2)*[h] + [h/2], dtype=np.float64)
-    evals = np.array([f(a + i*h) for i in np.arange(0, n+h, h)])
+    weights = np.array([h/2] + (n-1)*[h] + [h/2], dtype=np.float64)
+    evals = f(x)
 
     return (weights*evals).sum()
-
-
 def simpsons_rule(f, n, a, b):
     """
     Integrate function (f) from point (a,b) with n subdivisions using the Simpsons rule 
@@ -199,55 +203,102 @@ def simpsons_rule(f, n, a, b):
     n has to be even 
     """
     if n % 2 == 0:
+        x = np.linspace(a, b, n+1)
         h = (b - a) / n 
         weights = np.ones(n+1)
         weights[0] = h/3
-        weights[n-1] = h/3
+        weights[-1] = h/3
 
         weights[1:-1:2] = 4*h/3
         weights[2:-1:2] = 2*h/3
 
-        evals = np.array([f(a + i*h) for i in np.arange(0, n+h, h)])
+        evals = f(x)        
 
         return (weights*evals).sum()
 
-    else 
+    else:
         return np.nan 
+def gaussian_quad(f, n, a, b):
+    xi, wi = np.polynomial.legendre.leggauss(n)
+    x = (1/2)*(b-a)*xi + (1/2)*(a + b) # rescale any input a,b into (-1, 1)
+    return 0.5*(b-a) * np.sum(wi*f(x))
 
-    
 # Example usage and testing
 if __name__ == "__main__":
     import math
     import sys
-    # Create high precision integrator
-    if len(sys.argv)==1: order=10
-    else:
-        order=int(sys.argv[1])
-    print(f"Creating {order}-point Gaussian quadrature with high precision...")
-    gauss_hp = HighPrecisionGaussInt(order, precision=40)
-    gauss_hp.PrintWA()
+    # # Create high precision integrator
+    # if len(sys.argv)==1: order=10
+    # else:
+    #    order=int(sys.argv[1])
+    # print(f"Creating {order}-point Gaussian quadrature with high precision...")
+    # gauss_hp = HighPrecisionGaussInt(order, precision=40)
+    # gauss_hp.PrintWA()
 
-    # create log-log 
-    ns = np.logspace(2, 7, 100)
-
-    funcs = [np.sin, np.sin, np.exp]
-    fig, axs = plt.subplots(len(funcs), 1, figsize=(5, 5*len(funcs)))
-    for i,func in enumerate(funcs):        
-        axs[i].set_title(f'Integrator Methods for {func.__name__}')
-        for integrator in [simpsons_rule, trapzoid_rule]:
-            # create a val for each n
-            vals = np.array([integrator(f, n, 0, 2pi) for n in ns])
-            differences = math.abs(vals[1:] - vals[:-1])
-            axs[i].plot(ns, vals, label=f'{integrator.__name__}')
-            axs[i].set_ylabel('$\epsilon$')
-            axs[i].set_xlabel('N, divisions')
-            
-            axs[i].set_yscale('log')
-            axs[i].set_xscale('log')
-            
-
+    # xsq = lambda x: x**2 
+    # excb = lambda x: (1/3)*x**3
+    # funcs = [np.exp, xsq]
+    # exacts = [np.exp, excb]
     
-    plt.savefig('./Error.png')
+    x = lambda x: 1/(x - 0.5)
+    ex = lambda x: np.log(np.abs(x - 0.5))
+
+    d = 3
+    x1 = lambda x: x**(2*d)
+    ex1 = lambda x: x**(2*d - 1)/(2*d + 1)
+
+    x2 = lambda x: np.cos(100*x)
+    ex2 = lambda x: (1/100)*np.sin(100*x)
+
+    funcs = [x, x1, x2]
+    exacts = [ex, ex1, ex2]
+
+
+    names = ['$1/(x-0.5)$', '$x^{2d}$', '$\cos(100x)$']
+    #names = ['e^x', 'x^2']
+    ruls = [simpsons_rule, trapzoid_rule, gaussian_quad]
+    intervals = [[0.1,0.49], [-1, 1], [0, np.pi]]
+
+    fig, axs = plt.subplots(1, len(funcs), figsize=(5*len(funcs), 5))
+
+    for i,func in enumerate(funcs):   
+        axs[i].set_title(f'Errors for Int. Methods {names[i]}')     
+        for j, integrator in enumerate(ruls):
+            if j == len(ruls) - 1:
+                ns = np.arange(2, 128, 1)
+            else:
+                ns = np.arange(2, int(1e4), 2)
+
+            # create a val for each n
+            vals = np.array([integrator(func, n, intervals[i][0], intervals[i][1]) for n in ns])
+            true = exacts[i](np.pi)-exacts[i](0)
+
+            err = np.abs(vals-true)/true
+            axs[i].plot(ns, err, label=f'{integrator.__name__}')
+
+        axs[i].set_ylabel('$\epsilon$')
+        axs[i].set_xlabel('N, divisions')
+        axs[i].legend()
+        axs[i].set_yscale('log')
+        axs[i].set_xscale('log')
+
+
+    # leg1 = axs[0].legend()
+    # slope_handles = [
+    #     Line2D([0], [0], color="black", label="$\mathcal{O}(h^{-2})$"),
+    #     Line2D([0], [0], color="black", label="$\mathcal{O}(h^{-4})$"),
+    # ]
+    # leg2 = axs[0].legend(handles=slope_handles, loc="lower right")
+    # axs[0].add_artist(leg1)   # keep both legends
+  
+    # axs[0].plot(np.arange(1, 1e4, 100), np.pow(np.arange(1, 1e4, 100), -2, dtype=np.float64),  color='black',)
+    # axs[0].plot(np.arange(1, 1e4, 100), np.power(np.arange(1, 1e4, 100), -4, dtype=np.float64),  color='black',)
+
+
+
+    plt.tight_layout()
+    #plt.savefig('./Error.png')
+    plt.savefig('./BadError.png')
 
 
 
